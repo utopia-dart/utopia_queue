@@ -1,1 +1,3 @@
-A sample command-line application providing basic argument parsing with an entrypoint in `bin/`.
+# Utopia Queue
+
+A light and fast queue library.

@@ -1,9 +1,4 @@
-import 'package:redis/redis.dart';
-
-import '../src/connection/redis.dart';
-import '../src/server.dart';
-
-final RedisConnection connection = RedisConnection();
+import 'package:utopia_queue/utopia_queue.dart';
 void main(List<String> arguments) async {
   final connection = ConnectionRedis('localhost', 6379);
   final Server server = Server(connection, queue: 'myqueue');

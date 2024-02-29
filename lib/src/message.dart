@@ -46,7 +46,8 @@ class Message {
 
   String toJson() => json.encode(toMap());
 
-  factory Message.fromJson(String source) => Message.fromMap(json.decode(source));
+  factory Message.fromJson(String source) =>
+      Message.fromMap(json.decode(source));
 
   @override
   String toString() {
@@ -56,18 +57,18 @@ class Message {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-  
+
     return other is Message &&
-      other.pid == pid &&
-      other.queue == queue &&
-      other.timestamp == timestamp;
+        other.pid == pid &&
+        other.queue == queue &&
+        other.timestamp == timestamp;
   }
 
   @override
   int get hashCode {
     return pid.hashCode ^
-      queue.hashCode ^
-      timestamp.hashCode ^
-      payload.hashCode;
+        queue.hashCode ^
+        timestamp.hashCode ^
+        payload.hashCode;
   }
 }

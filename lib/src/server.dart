@@ -13,7 +13,8 @@ class Server {
 
   Future<void> start() async {
     while (true) {
-      final nextMessage = await connection.leftPop('$namespace.queue.$queue', 5);
+      final nextMessage =
+          await connection.leftPop('$namespace.queue.$queue', 5);
 
       if (nextMessage == null) {
         continue;
