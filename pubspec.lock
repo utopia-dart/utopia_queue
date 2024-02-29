@@ -353,6 +353,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.2"
+  utopia_di:
+    dependency: "direct main"
+    description:
+      name: utopia_di
+      sha256: fbd0a0324412b806671385d3204eb1692d37f50d1a3bc28378025ff4ba3f58c4
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   uuid:
     dependency: "direct main"
     description:

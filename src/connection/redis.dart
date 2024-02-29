@@ -57,7 +57,8 @@ class ConnectionRedis extends Connection {
   }
 
   @override
-  Future<bool> rightPushArray(String queue, Map<String, dynamic> payload) async {
+  Future<bool> rightPushArray(
+      String queue, Map<String, dynamic> payload) async {
     try {
       await (await _getRedis()).send_object(['RPUSH', jsonEncode(payload)]);
       return true;
@@ -69,10 +70,25 @@ class ConnectionRedis extends Connection {
   @override
   Future leftPop(String queue, int timeout) async {
     final res =
+        await (await _getRedis()).send_object(['BLPOP', queue, timeout]);
+    if (res is List && res.length < 2) {
+      return null;
+    }
+    return res[1];
+  }
+
+  @override
+  Future rightPop(String queue, int timeout) async {
+    final res =
         await (await _getRedis()).send_object(['BRPOP', queue, timeout]);
     if (res is List && res.length < 2) {
       return null;
     }
     return res[1];
+  }
+
+  @override
+  Future get(String key) async {
+    return (await _getRedis()).send_object(['GET', key]);
   }
 }

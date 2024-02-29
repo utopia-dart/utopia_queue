@@ -4,4 +4,6 @@ abstract class Connection {
   Future<bool> leftPushArray(String queue, Map<String, dynamic> payload);
   Future<List?> leftPopArray(String queue, int timeout);
   Future<dynamic> leftPop(String queue, int timeout);
+  Future<dynamic> rightPop(String queue, int timeout);
+  Future get(String key);
 }
