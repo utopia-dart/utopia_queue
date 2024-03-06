@@ -7,5 +7,5 @@ void main(List<String> arguments) async {
   server.job().inject('message').action((Message message) {
     print(message.toMap());
   });
-  server.start();
+  server.start(threads: 2);
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:isolate' as iso;
 import 'package:utopia_di/utopia_di.dart';
 import 'package:utopia_queue/src/message.dart';
 
@@ -12,6 +14,7 @@ class Server {
   final List<Hook> _errors = [];
   final List<Hook> _init = [];
   final List<Hook> _shutdown = [];
+  static Map<String, int> threads = {};
 
   Job _job = Job();
 
@@ -54,7 +57,9 @@ class Server {
     return hook;
   }
 
-  Future<void> start() async {
+  Future<void> _onIsolateMain((Connection, int) args) async {
+    final (connection, id) = args;
+    print('Server $id waiting for queue');
     while (true) {
       var nextMessage =
           await connection.rightPopArray('$namespace.queue.$queue', 5);
@@ -65,7 +70,7 @@ class Server {
 
       final message = Message.fromMap(nextMessage);
       setResource('message', () => message);
-      print('Job received ${message.pid}');
+      print('$id: Job received ${message.pid}');
 
       try {
         final groups = _job.getGroups();
@@ -88,11 +93,11 @@ class Server {
             globalHook: true,
           );
         }
-        print('job ${message.pid} successfully run');
+        print('$id: Job ${message.pid} successfully run');
       } catch (e) {
         await connection.leftPush('$namespace.failed.$queue', message.pid);
-        print('Error: Job ${message.pid} failed to run');
-        print('Error: ${e.toString()}');
+        print('$id: Error: Job ${message.pid} failed to run');
+        print('$id: Error: ${e.toString()}');
         setResource('error', () => e);
         _executeHooks(
           _errors,
@@ -101,6 +106,18 @@ class Server {
         );
       }
     }
+  }
+
+  Future<void> _spawnOffIsolates(int num) async {
+    for (var i = 0; i < num; i++) {
+      await iso.Isolate.spawn<(Connection, int)>(
+          _onIsolateMain, (connection, i));
+    }
+  }
+
+  Future<void> start({int threads = 1}) async {
+    await _spawnOffIsolates(threads);
+    stdin.readByteSync();
   }
 
   Map<String, dynamic> _getArguments(
