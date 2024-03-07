@@ -8,6 +8,14 @@ void main() async {
   final client = Client(connection, queue: 'myqueue');
   await client
       .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});
+  await client
+      .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});
+  await client
+      .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});
+  await client
+      .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});
+  await client
+      .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});
   print('enqueued');
   exit(0);
 }
