@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:isolate' as iso;
 import 'package:utopia_di/utopia_di.dart';
 import 'package:utopia_queue/src/message.dart';
@@ -6,6 +5,10 @@ import 'package:utopia_queue/src/message.dart';
 import 'connection.dart';
 import 'job.dart';
 
+/// Queue server
+///
+/// Runs and listens to the queue and processes
+/// jobs as theyare received
 class Server {
   final Connection connection;
   final String queue;
@@ -24,6 +27,7 @@ class Server {
     this.namespace = 'utopia-queue',
   });
 
+  /// Set resource
   void setResource(
     String name,
     Function callback, {
@@ -31,26 +35,39 @@ class Server {
   }) =>
       di.set(name, callback, injections: injections);
 
-  dynamic getResource(String name, {bool fresh = false}) =>
-      di.get(name, fresh: fresh);
+  /// Get resource
+  dynamic getResource<T>(String name, {bool fresh = false}) =>
+      di.get<T>(name, fresh: fresh);
 
+  /// Set job handler
   Job job() {
     _job = Job();
     return _job;
   }
 
+  /// Setup init hooks
+  ///
+  /// Init hooks are executed before the job
+  /// is executed
   Hook init() {
     final hook = Hook()..groups(['*']);
     _init.add(hook);
     return hook;
   }
 
+  /// Setup shutdown hooks
+  ///
+  /// Shutdown hooks are executed after the job
+  /// is executed
   Hook shutdown() {
     final hook = Hook()..groups(['*']);
     _shutdown.add(hook);
     return hook;
   }
 
+  /// Error hooks
+  ///
+  /// Error hooks are executed for each error
   Hook error() {
     final hook = Hook()..groups(['*']);
     _errors.add(hook);
@@ -62,7 +79,7 @@ class Server {
     print('Server $id waiting for queue');
     while (true) {
       var nextMessage =
-          await connection.rightPopArray('$namespace.queue.$queue', 5);
+          await connection.rightPopJson('$namespace.queue.$queue', 5);
 
       if (nextMessage == null) {
         continue;
@@ -115,9 +132,10 @@ class Server {
     }
   }
 
+  /// Start queue server
   Future<void> start({int threads = 1}) async {
+    iso.ReceivePort();
     await _spawnOffIsolates(threads);
-    stdin.readByteSync();
   }
 
   Map<String, dynamic> _getArguments(

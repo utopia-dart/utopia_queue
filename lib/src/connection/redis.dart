@@ -4,6 +4,10 @@ import 'package:redis/redis.dart';
 
 import '../connection.dart';
 
+/// Connection redis
+///
+/// Used to connect to redis server
+/// and manage queue
 class ConnectionRedis extends Connection {
   final String host;
   final int port;
@@ -26,8 +30,9 @@ class ConnectionRedis extends Connection {
     return redis!;
   }
 
+  /// Left pop json item from the queue
   @override
-  Future<Map<String, dynamic>?> leftPopArray(String queue, int timeout) async {
+  Future<Map<String, dynamic>?> leftPopJson(String queue, int timeout) async {
     final res =
         await (await _getRedis()).send_object(['BLPOP', queue, timeout]);
     if (res == null) {
@@ -39,8 +44,9 @@ class ConnectionRedis extends Connection {
     return jsonDecode(res[1]);
   }
 
+  /// Left push json item to the queue
   @override
-  Future<bool> leftPushArray(String queue, Map<String, dynamic> payload) async {
+  Future<bool> leftPushJson(String queue, Map<String, dynamic> payload) async {
     try {
       await (await _getRedis())
           .send_object(['LPUSH', queue, jsonEncode(payload)]);
@@ -50,6 +56,7 @@ class ConnectionRedis extends Connection {
     }
   }
 
+  /// Left push item to the queue
   @override
   Future<bool> leftPush(String queue, String value) async {
     try {
@@ -60,8 +67,9 @@ class ConnectionRedis extends Connection {
     }
   }
 
+  /// Right pop json item from the queue
   @override
-  Future<Map<String, dynamic>?> rightPopArray(String queue, int timeout) async {
+  Future<Map<String, dynamic>?> rightPopJson(String queue, int timeout) async {
     final res =
         await (await _getRedis()).send_object(['BRPOP', queue, timeout]);
 
@@ -74,9 +82,9 @@ class ConnectionRedis extends Connection {
     return jsonDecode(res[1]);
   }
 
+  /// Right push json item to the queue
   @override
-  Future<bool> rightPushArray(
-      String queue, Map<String, dynamic> payload) async {
+  Future<bool> rightPushJson(String queue, Map<String, dynamic> payload) async {
     try {
       await (await _getRedis())
           .send_object(['RPUSH', queue, jsonEncode(payload)]);
@@ -86,6 +94,7 @@ class ConnectionRedis extends Connection {
     }
   }
 
+  /// Left pop item from the queue
   @override
   Future leftPop(String queue, int timeout) async {
     final res =
@@ -96,6 +105,7 @@ class ConnectionRedis extends Connection {
     return res[1];
   }
 
+  /// Right pop item from the queue
   @override
   Future rightPop(String queue, int timeout) async {
     final res =
@@ -106,6 +116,7 @@ class ConnectionRedis extends Connection {
     return res[1];
   }
 
+  /// Get a key from redis
   @override
   Future get(String key) async {
     return (await _getRedis()).send_object(['GET', key]);

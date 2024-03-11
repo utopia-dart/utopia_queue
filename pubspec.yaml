@@ -1,15 +1,14 @@
 name: utopia_queue
 description: Light and easy to use queue library for Dart server projects
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/utopia-dart/utopia_queue
 
 environment:
   sdk: ^3.3.0
 
-# Add regular dependencies here.
 dependencies:
   redis: ^4.0.0
-  utopia_di: ^0.0.2
+  utopia_di: ^0.2.0
   uuid: ^4.3.3
 
 dev_dependencies:
