@@ -4,7 +4,14 @@ A light and fast queue library.
 
 ## Getting started
 
-Start a server as the following.
+First add the dependency in your pubspec.yaml
+
+```yaml
+dependencies:
+  utopia_queue: ^0.2.0
+```
+
+Now, in main.dart, you can start a server as the following.
 
 ```dart
 import 'package:utopia_queue/utopia_queue.dart';
