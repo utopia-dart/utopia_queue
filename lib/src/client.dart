@@ -3,6 +3,9 @@ import 'package:uuid/uuid.dart';
 import 'connection.dart';
 import 'message.dart';
 
+/// Utopia Queue client
+///
+/// Client to connect and add items to the queue
 class Client {
   final String queue;
   final String namespace;
@@ -14,6 +17,7 @@ class Client {
     this.namespace = 'utopia-queue',
   });
 
+  /// Add item to the queue
   Future<bool> enqueue(Map<String, dynamic> payload) async {
     final data = {
       'pid': Uuid().v1(),
@@ -21,10 +25,11 @@ class Client {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'payload': payload
     };
-    await connection.leftPushArray('$namespace.queue.$queue', data);
+    await connection.leftPushJson('$namespace.queue.$queue', data);
     return true;
   }
 
+  /// Retry failed jobs in the queue
   void retry([int? limit]) async {
     int processed = 0;
     final start = DateTime.now().millisecondsSinceEpoch;
@@ -53,6 +58,7 @@ class Client {
     }
   }
 
+  /// Get a job
   Future<Message?> getJob(String pid) async {
     final value = await connection.get('$namespace.jobs.$queue.$pid');
 

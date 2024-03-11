@@ -357,10 +357,10 @@ packages:
     dependency: "direct main"
     description:
       name: utopia_di
-      sha256: fbd0a0324412b806671385d3204eb1692d37f50d1a3bc28378025ff4ba3f58c4
+      sha256: f4a618e0278346e08b6cec8c88ae0135e279b6f4aaeed97739302d014c4024df
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.2"
+    version: "0.2.0"
   uuid:
     dependency: "direct main"
     description:

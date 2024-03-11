@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+/// Queue message data model
 class Message {
   final String pid;
   final String queue;
