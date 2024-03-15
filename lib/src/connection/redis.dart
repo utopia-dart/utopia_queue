@@ -9,32 +9,24 @@ import '../connection.dart';
 /// Used to connect to redis server
 /// and manage queue
 class ConnectionRedis extends Connection {
-  final String host;
-  final int port;
-  final String? user;
-  final String? password;
+  Command redis;
 
-  Command? redis;
+  ConnectionRedis._(this.redis);
 
-  ConnectionRedis(this.host, this.port, {this.user, this.password});
-
-  Future<Command> _getRedis() async {
-    if (redis != null) {
-      return redis!;
-    }
+  static Future<ConnectionRedis> init(String host, int port,
+      {String? user, String? password}) async {
     final connection = RedisConnection();
-    redis = await connection.connect(host, port);
+    final redis = await connection.connect(host, port);
     if (user != null && password != null) {
-      redis!.send_object(['AUTH', user, password]);
+      redis.send_object(['AUTH', user, password]);
     }
-    return redis!;
+    return ConnectionRedis._(redis);
   }
 
   /// Left pop json item from the queue
   @override
   Future<Map<String, dynamic>?> leftPopJson(String queue, int timeout) async {
-    final res =
-        await (await _getRedis()).send_object(['BLPOP', queue, timeout]);
+    final res = await redis.send_object(['BLPOP', queue, timeout]);
     if (res == null) {
       return null;
     }
@@ -48,8 +40,7 @@ class ConnectionRedis extends Connection {
   @override
   Future<bool> leftPushJson(String queue, Map<String, dynamic> payload) async {
     try {
-      await (await _getRedis())
-          .send_object(['LPUSH', queue, jsonEncode(payload)]);
+      await redis.send_object(['LPUSH', queue, jsonEncode(payload)]);
       return true;
     } catch (e) {
       return false;
@@ -60,7 +51,7 @@ class ConnectionRedis extends Connection {
   @override
   Future<bool> leftPush(String queue, String value) async {
     try {
-      await (await _getRedis()).send_object(['LPUSH', queue, value]);
+      await redis.send_object(['LPUSH', queue, value]);
       return true;
     } catch (e) {
       return false;
@@ -70,8 +61,7 @@ class ConnectionRedis extends Connection {
   /// Right pop json item from the queue
   @override
   Future<Map<String, dynamic>?> rightPopJson(String queue, int timeout) async {
-    final res =
-        await (await _getRedis()).send_object(['BRPOP', queue, timeout]);
+    final res = await redis.send_object(['BRPOP', queue, timeout]);
 
     if (res == null) {
       return null;
@@ -86,8 +76,7 @@ class ConnectionRedis extends Connection {
   @override
   Future<bool> rightPushJson(String queue, Map<String, dynamic> payload) async {
     try {
-      await (await _getRedis())
-          .send_object(['RPUSH', queue, jsonEncode(payload)]);
+      await redis.send_object(['RPUSH', queue, jsonEncode(payload)]);
       return true;
     } catch (e) {
       return false;
@@ -97,8 +86,7 @@ class ConnectionRedis extends Connection {
   /// Left pop item from the queue
   @override
   Future leftPop(String queue, int timeout) async {
-    final res =
-        await (await _getRedis()).send_object(['BLPOP', queue, timeout]);
+    final res = await redis.send_object(['BLPOP', queue, timeout]);
     if (res is List && res.length < 2) {
       return null;
     }
@@ -108,8 +96,7 @@ class ConnectionRedis extends Connection {
   /// Right pop item from the queue
   @override
   Future rightPop(String queue, int timeout) async {
-    final res =
-        await (await _getRedis()).send_object(['BRPOP', queue, timeout]);
+    final res = await redis.send_object(['BRPOP', queue, timeout]);
     if (res is List && res.length < 2) {
       return null;
     }
@@ -119,6 +106,6 @@ class ConnectionRedis extends Connection {
   /// Get a key from redis
   @override
   Future get(String key) async {
-    return (await _getRedis()).send_object(['GET', key]);
+    return redis.send_object(['GET', key]);
   }
 }

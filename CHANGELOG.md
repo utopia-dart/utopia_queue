@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Fix redis connection's API
+
 ## 0.2.0
 
 - Refactor namings
