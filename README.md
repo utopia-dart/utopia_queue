@@ -1,6 +1,8 @@
 # Utopia Queue
 
-A light and fast queue library.
+Utopia queue is a powerful queue library. It is designed to be simple and easy to learn and use. It is built on top of redis.
+
+It is super helpful to build background workers to handle long running tasks. For example in your API server, you can use a emails queue to handle sending emails in the background.
 
 ## Getting started
 
@@ -22,6 +24,7 @@ void main(List<String> arguments) async {
 
   server.job().inject('message').action((Message message) {
     print(message.toMap());
+    // Do something with the message
   });
   server.start();
 }
