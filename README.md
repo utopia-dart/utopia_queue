@@ -4,22 +4,15 @@ Utopia queue is a powerful queue library. It is designed to be simple and easy t
 
 It is super helpful to build background workers to handle long running tasks. For example in your API server, you can use a emails queue to handle sending emails in the background.
 
-## Getting started
+## Usage
 
-First add the dependency in your pubspec.yaml
-
-```yaml
-dependencies:
-  utopia_queue: ^0.2.0
-```
-
-Now, in main.dart, you can start a server as the following.
+In main.dart, you can start a server as the following.
 
 ```dart
 import 'package:utopia_queue/utopia_queue.dart';
 
 void main(List<String> arguments) async {
-  final connection = ConnectionRedis('localhost', 6379);
+  final connection = await ConnectionRedis.init('localhost', 6379);
   final Server server = Server(connection, queue: 'myqueue');
 
   server.job().inject('message').action((Message message) {
@@ -40,7 +33,7 @@ import 'dart:math';
 import 'package:utopia_queue/utopia_queue.dart';
 
 void sendMessage() async {
-  final connection = ConnectionRedis('localhost', 6379);
+  final connection = await ConnectionRedis.init('localhost', 6379);
   final client = Client(connection, queue: 'myqueue');
   await client
       .enqueue({'user': Random().nextInt(20), 'name': 'Damodar Lohani'});

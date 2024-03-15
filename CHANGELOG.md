@@ -1,3 +1,7 @@
+## 0.3.1
+
+- Fix example in readme
+
 ## 0.3.0
 
 - Fix redis connection's API
