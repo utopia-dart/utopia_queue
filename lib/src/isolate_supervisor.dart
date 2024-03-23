@@ -1,11 +1,14 @@
 import 'dart:developer' as dev;
 import 'dart:isolate';
 
+import '../utopia_queue.dart';
+
 class IsolateSupervisor {
   final Isolate isolate;
   final ReceivePort receivePort;
   final int id;
-  SendPort? _isolateSendPort;
+  SendPort? isolateSendPort;
+  Function(Message) onError;
 
   static const String messageClose = '_CLOSE';
 
@@ -13,6 +16,7 @@ class IsolateSupervisor {
     required this.isolate,
     required this.receivePort,
     required this.id,
+    required this.onError,
   });
 
   void resume() {
@@ -22,13 +26,17 @@ class IsolateSupervisor {
 
   void stop() {
     dev.log('Stopping isolate $id', name: 'FINE');
-    _isolateSendPort?.send(messageClose);
+    isolateSendPort?.send(messageClose);
     receivePort.close();
   }
 
   void listener(dynamic message) async {
     if (message is SendPort) {
-      _isolateSendPort = message;
+      isolateSendPort = message;
+    } else if (message is Map) {
+      if (message['status'] == 'failed') {
+        onError.call(message['message']);
+      }
     }
   }
 }
