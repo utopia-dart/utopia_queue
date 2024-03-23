@@ -1,5 +1,4 @@
 import 'dart:developer' as dev;
-import 'dart:io';
 import 'dart:isolate' as iso;
 
 import 'package:utopia_di/utopia_di.dart';
