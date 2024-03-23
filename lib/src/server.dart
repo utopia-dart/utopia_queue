@@ -79,7 +79,7 @@ class Server {
     return hook;
   }
 
-  Future<void> _onIsolateMain() async {
+  Future<void> _watchQueue() async {
     while (true) {
       IsolateSupervisor? worker;
       for (final sup in _supervisors) {
@@ -89,7 +89,7 @@ class Server {
         worker = sup;
         break;
       }
-      
+
       if (worker == null) {
         continue;
       }
@@ -137,7 +137,7 @@ class Server {
   /// Start queue server
   Future<void> start({int threads = 1}) async {
     await _spawn(threads);
-    await _onIsolateMain();
+    await _watchQueue();
   }
 }
 
