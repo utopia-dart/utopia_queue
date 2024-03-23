@@ -1,4 +1,7 @@
+import 'dart:developer' as dev;
+import 'dart:io';
 import 'dart:isolate' as iso;
+
 import 'package:utopia_di/utopia_di.dart';
 import 'package:utopia_queue/src/isolate_message.dart';
 import 'package:utopia_queue/src/isolate_supervisor.dart';
@@ -78,6 +81,18 @@ class Server {
 
   Future<void> _onIsolateMain() async {
     while (true) {
+      IsolateSupervisor? worker;
+      for (final sup in _supervisors) {
+        if (sup.isBusy) {
+          continue;
+        }
+        worker = sup;
+        break;
+      }
+      
+      if (worker == null) {
+        continue;
+      }
       var nextMessage =
           await connection.rightPopJson('$namespace.queue.$queue', 5);
 
@@ -87,7 +102,7 @@ class Server {
 
       final message = Message.fromMap(nextMessage);
       setResource('message', () => message);
-      _supervisors.first.isolateSendPort?.send(message);
+      worker.isolateSendPort?.send(message);
     }
   }
 
@@ -221,8 +236,9 @@ class _IsolateServer {
   }
 
   Future<void> execute(Message message) async {
-    print('$id: Job received ${message.pid}');
+    dev.log('$id: Job received ${message.pid}');
     di.set('message', () => message);
+    sendPort.send({'type': 'status', 'status': IsolateStatus.working});
 
     try {
       final groups = job.getGroups();
@@ -245,16 +261,18 @@ class _IsolateServer {
           globalHook: true,
         );
       }
-      print('$id: Job ${message.pid} successfully run');
+      dev.log('$id: Job ${message.pid} successfully run');
     } catch (e) {
-      sendPort.send({'status': 'failed', 'message': message});
-      print('$id: Error: Job ${message.pid} failed to run');
-      print('$id: Error: ${e.toString()}');
+      sendPort.send({'type': 'error', 'message': message});
+      dev.log('$id: Error: Job ${message.pid} failed to run');
+      dev.log('$id: Error: ${e.toString()}');
       _executeHooks(
         errors,
         [],
         (hook) => _getArguments(hook, message.payload),
       );
+    } finally {
+      sendPort.send({'type': 'status', 'status': IsolateStatus.idle});
     }
   }
 }
@@ -272,6 +290,7 @@ Future<void> _entrypoint(IsolateMessage options) async {
   );
 
   options.sendPort.send(receivePort.sendPort);
+  dev.log('Worker: ${options.id} waiting fro job');
   receivePort.listen((message) async {
     if (message is Message) {
       await server.execute(message);

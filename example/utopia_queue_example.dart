@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:utopia_queue/utopia_queue.dart';
 
 void main(List<String> arguments) async {
@@ -8,9 +10,14 @@ void main(List<String> arguments) async {
     return 'hello res 1';
   });
 
-  server.job().inject('message').inject('res1').action((Message message, String res1) {
+  server
+      .job()
+      .inject('message')
+      .inject('res1')
+      .action((Message message, String res1) {
     print('res1: $res1');
+    sleep(Duration(seconds: 2));
     print(message.toMap());
   });
-  server.start(threads: 2);
+  server.start(threads: 3);
 }
