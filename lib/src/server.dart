@@ -1,5 +1,9 @@
+import 'dart:developer' as dev;
 import 'dart:isolate' as iso;
+
 import 'package:utopia_di/utopia_di.dart';
+import 'package:utopia_queue/src/isolate_message.dart';
+import 'package:utopia_queue/src/isolate_supervisor.dart';
 import 'package:utopia_queue/src/message.dart';
 
 import 'connection.dart';
@@ -17,7 +21,7 @@ class Server {
   final List<Hook> _errors = [];
   final List<Hook> _init = [];
   final List<Hook> _shutdown = [];
-  static Map<String, int> threads = {};
+  final List<IsolateSupervisor> _supervisors = [];
 
   Job _job = Job();
 
@@ -74,10 +78,20 @@ class Server {
     return hook;
   }
 
-  Future<void> _onIsolateMain((Connection, int) args) async {
-    final (connection, id) = args;
-    print('Server $id waiting for queue');
+  Future<void> _watchQueue() async {
     while (true) {
+      IsolateSupervisor? worker;
+      for (final sup in _supervisors) {
+        if (sup.isBusy) {
+          continue;
+        }
+        worker = sup;
+        break;
+      }
+
+      if (worker == null) {
+        continue;
+      }
       var nextMessage =
           await connection.rightPopJson('$namespace.queue.$queue', 5);
 
@@ -87,56 +101,63 @@ class Server {
 
       final message = Message.fromMap(nextMessage);
       setResource('message', () => message);
-      print('$id: Job received ${message.pid}');
-
-      try {
-        final groups = _job.getGroups();
-        if (_job.hook) {
-          await _executeHooks(
-            _init,
-            groups,
-            (hook) => _getArguments(hook, message.payload),
-            globalHook: true,
-          );
-        }
-        final args = _getArguments(_job, message.payload);
-        await Function.apply(
-            _job.getAction(), [..._job.argsOrder.map((key) => args[key])]);
-        if (_job.hook) {
-          await _executeHooks(
-            _shutdown,
-            groups,
-            (hook) => _getArguments(hook, message.payload),
-            globalHook: true,
-          );
-        }
-        print('$id: Job ${message.pid} successfully run');
-      } catch (e) {
-        await connection.leftPush('$namespace.failed.$queue', message.pid);
-        print('$id: Error: Job ${message.pid} failed to run');
-        print('$id: Error: ${e.toString()}');
-        setResource('error', () => e);
-        _executeHooks(
-          _errors,
-          [],
-          (hook) => _getArguments(hook, message.payload),
-        );
-      }
+      worker.isolateSendPort?.send(message);
     }
   }
 
-  Future<void> _spawnOffIsolates(int num) async {
+  void _onError(Message message) {
+    connection.leftPushJson('$namespace.failed.$queue', message.toMap());
+  }
+
+  Future<void> _spawn(int num) async {
+    _supervisors.clear();
     for (var i = 0; i < num; i++) {
-      await iso.Isolate.spawn<(Connection, int)>(
-          _onIsolateMain, (connection, i));
+      final receivePort = iso.ReceivePort();
+      final isolate = await iso.Isolate.spawn<IsolateMessage>(
+        _entrypoint,
+        IsolateMessage(
+          id: i,
+          sendPort: receivePort.sendPort,
+          errors: _errors,
+          job: _job,
+          init: _init,
+          shutdown: _shutdown,
+          di: di,
+        ),
+        paused: true,
+      );
+      final sup = IsolateSupervisor(
+          isolate: isolate, receivePort: receivePort, id: i, onError: _onError);
+      _supervisors.add(sup);
+      sup.resume();
     }
   }
 
   /// Start queue server
   Future<void> start({int threads = 1}) async {
-    iso.ReceivePort();
-    await _spawnOffIsolates(threads);
+    await _spawn(threads);
+    await _watchQueue();
   }
+}
+
+class _IsolateServer {
+  final Job job;
+  final DI di;
+  final List<Hook> errors;
+  final List<Hook> init;
+  final List<Hook> shutdown;
+  final iso.SendPort sendPort;
+  final int id;
+
+  _IsolateServer({
+    required this.id,
+    required this.job,
+    required this.di,
+    required this.errors,
+    required this.init,
+    required this.shutdown,
+    required this.sendPort,
+  });
 
   Map<String, dynamic> _getArguments(
     Hook hook,
@@ -192,7 +213,7 @@ class Server {
 
     void executeGroupHooks() {
       for (final group in groups) {
-        for (final hook in _init) {
+        for (final hook in init) {
           if (hook.getGroups().contains(group)) {
             final arguments = argsCallback.call(hook);
             Function.apply(
@@ -212,4 +233,68 @@ class Server {
       executeGlobalHook();
     }
   }
+
+  Future<void> execute(Message message) async {
+    dev.log('$id: Job received ${message.pid}');
+    di.set('message', () => message);
+    sendPort.send({'type': 'status', 'status': IsolateStatus.working});
+
+    try {
+      final groups = job.getGroups();
+      if (job.hook) {
+        await _executeHooks(
+          init,
+          groups,
+          (hook) => _getArguments(hook, message.payload),
+          globalHook: true,
+        );
+      }
+      final args = _getArguments(job, message.payload);
+      await Function.apply(
+          job.getAction(), [...job.argsOrder.map((key) => args[key])]);
+      if (job.hook) {
+        await _executeHooks(
+          shutdown,
+          groups,
+          (hook) => _getArguments(hook, message.payload),
+          globalHook: true,
+        );
+      }
+      dev.log('$id: Job ${message.pid} successfully run');
+    } catch (e) {
+      sendPort.send({'type': 'error', 'message': message});
+      dev.log('$id: Error: Job ${message.pid} failed to run');
+      dev.log('$id: Error: ${e.toString()}');
+      _executeHooks(
+        errors,
+        [],
+        (hook) => _getArguments(hook, message.payload),
+      );
+    } finally {
+      sendPort.send({'type': 'status', 'status': IsolateStatus.idle});
+    }
+  }
+}
+
+Future<void> _entrypoint(IsolateMessage options) async {
+  final receivePort = iso.ReceivePort();
+  final server = _IsolateServer(
+    id: options.id,
+    job: options.job,
+    di: options.di,
+    errors: options.errors,
+    init: options.init,
+    shutdown: options.shutdown,
+    sendPort: options.sendPort,
+  );
+
+  options.sendPort.send(receivePort.sendPort);
+  dev.log('Worker: ${options.id} waiting fro job');
+  receivePort.listen((message) async {
+    if (message is Message) {
+      await server.execute(message);
+    } else if (message == IsolateSupervisor.messageClose) {
+      receivePort.close();
+    }
+  });
 }
